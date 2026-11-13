@@ -1,0 +1,40 @@
+{
+	"$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+	"UUID": "com.ipcheck.streamdeck",
+	"Name": "IP Check",
+	"Version": "1.0.0.0",
+	"Author": "Sergey Poterianski",
+	"Description": "Статус маршрутов ipcheck: сводная кнопка и кнопка на каждую группу.",
+	"Icon": "imgs/plugin",
+	"Category": "IP Check",
+	"CategoryIcon": "imgs/category",
+	"CodePath": "bin/plugin.js",
+	"SDKVersion": 2,
+	"Nodejs": { "Version": "24" },
+	"OS": [{ "Platform": "mac", "MinimumVersion": "13" }],
+	"Software": { "MinimumVersion": "7.1" },
+	"Actions": [
+		{
+			"UUID": "com.ipcheck.streamdeck.summary",
+			"Name": "Сводка",
+			"Tooltip": "Все маршруты: зелёная — всё ок, красная — число проблем. Нажатие — проверить сейчас.",
+			"Icon": "imgs/action-summary",
+			"PropertyInspectorPath": "ui/inspector.html",
+			"Controllers": ["Keypad"],
+			"UserTitleEnabled": false,
+			"SupportedInMultiActions": false,
+			"States": [{ "Image": "imgs/key", "ShowTitle": false }]
+		},
+		{
+			"UUID": "com.ipcheck.streamdeck.route",
+			"Name": "Маршрут",
+			"Tooltip": "Одна группа: страна фактического выхода и статус. Нажатие — проверить сейчас.",
+			"Icon": "imgs/action-route",
+			"PropertyInspectorPath": "ui/inspector.html",
+			"Controllers": ["Keypad"],
+			"UserTitleEnabled": false,
+			"SupportedInMultiActions": false,
+			"States": [{ "Image": "imgs/key", "ShowTitle": false }]
+		}
+	]
+}

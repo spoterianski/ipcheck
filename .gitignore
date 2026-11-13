@@ -1,0 +1,5 @@
+bin/
+node_modules/
+streamdeck/com.ipcheck.streamdeck.sdPlugin/logs/
+streamdeck/com.ipcheck.streamdeck.sdPlugin/imgs/flags/
+vps/hosts.local.mk

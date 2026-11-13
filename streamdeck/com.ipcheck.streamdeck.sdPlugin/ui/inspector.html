@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+	body { margin: 0; padding: 8px 12px; background: #2d2d2d; color: #d8d8d8; font: 12px -apple-system, Helvetica, sans-serif; }
+	.row { display: flex; align-items: center; margin: 6px 0; }
+	.row label { width: 90px; flex: none; }
+	.row input[type=text], .row select { flex: 1; min-width: 0; background: #3d3d3d; color: #d8d8d8; border: 0; border-radius: 3px; padding: 4px 6px; font: inherit; }
+	.hint { margin: 2px 0 0 90px; color: #9a9a9a; font-size: 11px; }
+	.hidden { display: none; }
+</style>
+</head>
+<body>
+	<div class="row">
+		<label for="url">Агент</label>
+		<input id="url" type="text" placeholder="http://127.0.0.1:8787">
+	</div>
+	<div id="routeRow" class="row hidden">
+		<label for="group">Маршрут</label>
+		<select id="group"></select>
+	</div>
+	<div id="blinkRow" class="row hidden">
+		<label for="blink">Мигать</label>
+		<input id="blink" type="checkbox">
+	</div>
+	<div id="hint" class="hint"></div>
+
+<script>
+	const DEFAULT_URL = "http://127.0.0.1:8787";
+	const $ = (id) => document.getElementById(id);
+	let ws, uuid, settings = {}, global = {};
+
+	function send(event, payload) {
+		ws.send(JSON.stringify({ event, context: uuid, payload }));
+	}
+
+	// Fill the group list from the agent itself, keeping the saved group even if it is gone.
+	async function loadGroups() {
+		const sel = $("group");
+		const groups = [];
+		try {
+			const res = await fetch((global.url || DEFAULT_URL).replace(/\/+$/, "") + "/api/status");
+			const s = await res.json();
+			for (const r of s.results || []) groups.push(r.group);
+			$("hint").textContent = groups.length ? "" : "агент ещё не закончил первую проверку";
+		} catch {
+			$("hint").textContent = "агент не отвечает";
+		}
+		if (settings.group && !groups.includes(settings.group)) groups.unshift(settings.group);
+		sel.replaceChildren(new Option("—", ""), ...groups.map((g) => new Option(g, g)));
+		sel.value = settings.group || "";
+	}
+
+	// Called by Stream Deck when the property inspector opens.
+	function connectElgatoStreamDeckSocket(port, inUUID, registerEvent, info, actionInfo) {
+		uuid = inUUID;
+		const action = JSON.parse(actionInfo);
+		settings = action.payload.settings || {};
+		const isRoute = action.action.endsWith(".route");
+		$(isRoute ? "routeRow" : "blinkRow").classList.remove("hidden");
+		$("blink").checked = settings.blink !== false;
+
+		ws = new WebSocket("ws://127.0.0.1:" + port);
+		ws.onopen = () => {
+			ws.send(JSON.stringify({ event: registerEvent, uuid }));
+			send("getGlobalSettings");
+		};
+		ws.onmessage = (e) => {
+			const msg = JSON.parse(e.data);
+			if (msg.event === "didReceiveGlobalSettings") {
+				global = msg.payload.settings || {};
+				$("url").value = global.url || "";
+				if (isRoute) loadGroups();
+			}
+		};
+
+		$("url").onchange = () => {
+			global.url = $("url").value.trim();
+			send("setGlobalSettings", global);
+			if (isRoute) loadGroups();
+		};
+		$("group").onchange = () => {
+			settings.group = $("group").value;
+			send("setSettings", settings);
+		};
+		$("blink").onchange = () => {
+			settings.blink = $("blink").checked;
+			send("setSettings", settings);
+		};
+	}
+</script>
+</body>
+</html>

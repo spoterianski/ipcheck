@@ -1,0 +1,17 @@
+[Unit]
+Description=ipcheck agent (routes check + Home Assistant MQTT)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/ipcheck run -no-tray -config /etc/ipcheck/config.yaml
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

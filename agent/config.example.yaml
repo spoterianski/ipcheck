@@ -1,0 +1,44 @@
+# Скопируй в ~/.config/ipcheck/config.yaml
+
+interval: 30s          # как часто проверять
+timeout: 10s           # таймаут одной проверки
+listen: 127.0.0.1:8787 # дашборд и API; 0.0.0.0:8787 — чтобы открыть с SteamDeck
+notify: true           # macOS-уведомления при смене статуса
+
+# podkop (sing-box) отвечает адресами из этого диапазона для доменов из своих списков.
+# Если домен резолвится в реальный IP, значит DNS идёт мимо podkop.
+fakeip_cidr: 198.18.0.0/15
+check_fakeip: true
+
+# Выходные IP. country — ISO-код для флага.
+exits:
+  de-vpn:   { ip: 198.51.100.10, country: DE }
+  nl-vpn:   { ip: 203.0.113.7,   country: NL }
+  us-chain: { ips: [192.0.2.10, 192.0.2.11], country: US }  # несколько IP у одного выхода
+  isp:      { ip: 192.0.2.55,    country: RU }
+
+# Группы маршрутизации. Каждый тестовый домен должен быть добавлен
+# в список доменов соответствующей секции podkop / правила 3x-ui.
+groups:
+  - name: youtube
+    url: https://yt.check.example.com/
+    expect: de-vpn
+  - name: ai
+    url: https://ai.check.example.com/
+    expect: us-chain
+  - name: media
+    url: https://media.check.example.com/
+    expect: nl-vpn
+  - name: direct
+    url: https://direct.check.example.com/
+    expect: isp
+    check_fakeip: false   # домен не в списках podkop — резолвится в реальный IP
+
+# Публикация в Home Assistant через MQTT (Mosquitto). Не указывать — не публиковать.
+# Включай только на одной машине (например, на Linux-сервере), иначе агенты будут перетирать друг друга.
+#mqtt:
+#  broker: tcp://homeassistant.local:1883
+#  username: ipcheck
+#  password: secret
+#  topic: ipcheck            # базовый топик, по умолчанию ipcheck
+#  device_name: IP Check     # имя устройства в HA

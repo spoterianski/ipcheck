@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IP Check</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --text: #1b1d21; --muted: #6b7280; --border: #e3e5e9;
+    --ok: #15803d; --ok-bg: #dcfce7; --bad: #b91c1c; --bad-bg: #fee2e2; --warn: #a16207; --warn-bg: #fef3c7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111316; --card: #1a1d21; --text: #e6e8eb; --muted: #9097a1; --border: #2a2e34;
+      --ok: #4ade80; --ok-bg: #12301d; --bad: #f87171; --bad-bg: #3a1616; --warn: #facc15; --warn-bg: #3a2f0b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 -apple-system, system-ui, sans-serif; }
+  main { max-width: 820px; margin: 0 auto; padding: 20px 16px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  h1 { font-size: 20px; margin: 0; flex: 1; }
+  #overall { font-size: 28px; }
+  button { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  .meta { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center; }
+  .card.bad { border-color: var(--bad); }
+  .flag { font-size: 34px; grid-row: span 2; }
+  .name { font-weight: 600; }
+  .host, .detail { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .detail { grid-column: 2 / 4; }
+  .msg { grid-column: 1 / 4; font-size: 13px; color: var(--bad); }
+  .badge { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .ok { color: var(--ok); background: var(--ok-bg); }
+  .bad { color: var(--bad); background: var(--bad-bg); }
+  .warn { color: var(--warn); background: var(--warn-bg); }
+  #conn { display: none; }
+  #conn.show { display: block; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span id="overall">⚪️</span>
+    <h1>IP Check</h1>
+    <button id="check">Проверить</button>
+  </header>
+  <div class="meta" id="meta">Загрузка…</div>
+  <div class="meta bad" id="conn">Нет связи с агентом, переподключаюсь…</div>
+  <div id="list"></div>
+</main>
+<script>
+const LABELS = { ok: "OK", mismatch: "не тот выход", unknown_exit: "неизвестный выход", dns_bypass: "DNS мимо podkop", error: "ошибка" };
+const CLASS = { ok: "ok", error: "warn" };
+
+function flag(cc) {
+  if (!cc || cc.length !== 2) return "🏳️";
+  return String.fromCodePoint(...[...cc.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+}
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function render(s) {
+  document.getElementById("overall").textContent = !s.results?.length ? "⚪️" : s.ok ? "🟢" : "🔴";
+  document.title = (s.ok ? "🟢" : s.problems ? `🔴 ${s.problems}` : "⚪️") + " IP Check";
+  const upd = s.updated && !s.updated.startsWith("0001") ? new Date(s.updated).toLocaleTimeString() : "—";
+  document.getElementById("meta").textContent = `Обновлено: ${upd} · интервал ${s.interval}` + (s.problems ? ` · проблем: ${s.problems}` : "");
+  document.getElementById("list").innerHTML = (s.results || []).map(r => {
+    const cls = CLASS[r.status] || "bad";
+    const shown = r.country || (r.status === "ok" ? r.expect_country : "");
+    const via = r.ip ? `${esc(r.exit || "?")} · ${esc(r.ip)}` : "—";
+    const exp = r.status === "ok" ? "" : ` · ожидался ${flag(r.expect_country)} ${esc(r.expect)}`;
+    return `<div class="card ${cls === "ok" ? "" : "bad"}">
+      <span class="flag">${r.ip ? flag(shown) : "❔"}</span>
+      <span><span class="name">${esc(r.group)}</span> <span class="host">${esc(r.host)}</span></span>
+      <span class="badge ${cls}">${LABELS[r.status] || r.status}</span>
+      <span class="detail">${via}${exp} · ${r.latency_ms} ms</span>
+      ${r.message ? `<span class="msg">${esc(r.message)}</span>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function connect() {
+  const es = new EventSource("api/events");
+  const conn = document.getElementById("conn");
+  es.onmessage = e => { conn.classList.remove("show"); render(JSON.parse(e.data)); };
+  es.onerror = () => conn.classList.add("show");
+}
+
+document.getElementById("check").onclick = () => fetch("api/check", { method: "POST" });
+connect();
+</script>
+</body>
+</html>
